@@ -188,3 +188,121 @@ def annIncreaseTable(value, increasepyear, numcycles, start_date=date(2000,1,1),
     rischedule["Month"] = pd.to_datetime(rischedule["Month"])
 
     return rischedule
+
+
+# ============================================================================
+def investmentgrowth(initialvalue, growthrate, termyears, addpayment=0, addpaymentrate=0, 
+                     costBalPcnt=0, start_date=(date(2000,1,1)), cyclesPerAnnum=12,ID=''):
+    """
+    Calculate the amortization schedule given the loan details.
+
+    :param initialvalue: Initial value paid into the investment
+    :param growthrate: The annual growth rate for this investment
+    :param termyears: Number of years for the investment
+    :param addpayment: Additional investment amount per period
+    :param addpaymentrate: growth in the additional investment compounded annually 
+    :param costBalPcnt: managment cost as percentage on balance
+    :param start_date: Start date for the loan.
+    :param cyclesPerAnnum: Number of investment payment cycles in a year.
+    :param ID: String ID for this calculation.
+
+    :return: 
+        schedule: investment schedule as an Ordered Dictionary
+    """
+
+    # initialize the variables to keep track of the periods and running balances
+    p = 1
+    beg_balance = initialvalue
+    end_balance = initialvalue
+    currentyear = start_date.year
+
+    while p < termyears * cyclesPerAnnum:
+        
+        # Recalculate the growth based on the current balance
+        growth = - beg_balance * growthrate / cyclesPerAnnum
+        
+        # cost on balance
+        costBal = beg_balance * costBalPcnt / cyclesPerAnnum
+        
+        # total costs
+        costs = costBal
+        
+        end_balance = beg_balance - growth + addpayment - costs
+
+        yield OrderedDict([('Month',start_date),
+                           ('Period', p),
+                           ('Begin Balance', beg_balance),
+                           ('InitialVal', initialvalue),
+                           ('GrowthRate', growthrate),
+                           ('Growth', growth),
+                           ('AddPayment', addpayment),
+                           ('AddPayRate', addpaymentrate),
+                           ('CostBalance',costBal),
+                           ('costBalPcnt',costBalPcnt),
+                           ('End Balance', end_balance),
+                           ('ID', ID),
+                          ])
+        
+        # Increment the counter, balance and date
+        p += 1
+        if cyclesPerAnnum == 12:
+            start_date += relativedelta(months=1)
+        elif  cyclesPerAnnum == 365.25:
+            start_date += relativedelta(days=1)
+        else:
+            print(f'Unknown cyclesPerAnnum = {cyclesPerAnnum}')
+            return None
+        beg_balance = end_balance
+        
+        # only increase the additional payment once per year
+        if start_date.year != currentyear:
+            currentyear = start_date.year
+            addpayment *= 1 + addpaymentrate
+
+            
+# ============================================================================
+def investment_table(initialvalue, growthrate, termyears, addpayment=0, addpaymentrate=0, costBalPcnt=0,
+                     start_date=(date(2000,1,1)), cyclesPerAnnum=12,ID=''):
+    """
+    Calculate the amortization schedule given the loan details as well as summary stats for the loan
+
+    :param initialvalue: Initial value paid into the investment
+    :param growthrate: The annual growth rate for this investment
+    :param termyears: Number of years for the investment
+    :param addpayment: Additional investment amount per period
+    :param addpaymentrate: growth in the additional investment compounded annually 
+    :param costBalPcnt: managment cost as percentage on balance
+    :param start_date: Start date for the loan.
+    :param cyclesPerAnnum: Number of investment payments in a year.
+    :param ID: String ID for this calculation.
+
+    :return: 
+        schedule: investment schedule as a pandas dataframe
+        summary: Pandas dataframe that summarizes the investment
+    """
+    
+    # Generate the schedule 
+    schedule = pd.DataFrame(investmentgrowth(initialvalue=initialvalue, growthrate=growthrate, 
+                                termyears=termyears,addpayment=addpayment, addpaymentrate=addpaymentrate, 
+                                             costBalPcnt=costBalPcnt,start_date=start_date, 
+                                             cyclesPerAnnum=cyclesPerAnnum,ID=ID))
+    
+    # reorder the columns
+    schedule = schedule[['Period','Month','Begin Balance','InitialVal','GrowthRate','Growth',
+                         'costBalPcnt','CostBalance','AddPayment','AddPayRate','End Balance','ID']]
+
+    # Convert to a pandas datetime object to make subsequent calcs easier
+    schedule["Month"] = pd.to_datetime(schedule["Month"])
+    schedule["NettGrowth"] = schedule["End Balance"] - schedule["Begin Balance"][0]
+    
+    #Create a summary statistics table
+    endBalance = schedule.iloc[-1]["End Balance"]
+    NettGrowth = schedule.iloc[-1]["NettGrowth"]
+    stats = pd.Series([ID,initialvalue,growthrate,
+                       termyears,addpayment,addpaymentrate,
+                       endBalance,costBalPcnt,NettGrowth],
+                       index=['ID','InitialVal','GrowthRate',
+                              'Years','AddPayment','AddPayRate',
+                              'EndBalance','CostBalPcnt',"NettGrowth"])
+    
+    return schedule, stats

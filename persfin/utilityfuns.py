@@ -7,6 +7,8 @@ from collections import OrderedDict
 from dateutil.relativedelta import *
 import matplotlib.pyplot as plt
 from IPython.core.pylabtools import figsize
+from IPython.core.display import display, HTML
+from IPython.display import Latex
 
 
 sys.path = ["./"]+sys.path
@@ -185,4 +187,37 @@ def bondtaxsavingsanalysis(principal,interest_rate,bondyears,taxrate,rentpmonth,
         
     return dfc,nistats
 
+# ============================================================================
+def dispdfTable(dfi,doLaTeXdisplay,decimals=2,index=None, drops=[]):
+    """Creates LaTeX or HTML display string
+    """
+#     print(type(dfi))
+    extraVal = 1 if index==True else 0;
+    if isinstance(dfi, pd.Series):
+        if 'ID' in dfi.index: 
+            if len(dfi['ID']) == 0:
+                drops = drops + ['ID']
+        dfi = dfi.drop(drops)            
+        
+        df = dfi.to_frame()
+        tabstr = f'|l*{{{df.shape[1]}}}{{r}}|'
+        index = True if index==None else index
+        header = False
+        
+        df = df.round(decimals)
 
+    else:
+        df = dfi
+        tabstr = f'*{{{df.shape[1]+extraVal}}}{{|r}}|'
+        index = False if index==None else index
+        if 'ID' in df.columns:
+            if len(df.iloc[0]['ID']) == 0:
+                drops = drops + ['ID']
+        df = df.drop(drops,axis=1).round(decimals)
+        header = True
+    
+    if doLaTeXdisplay:
+        display(Latex(df.to_latex(index=index,column_format=tabstr,header=header)))
+    else:
+        display(HTML(df.to_html(index=index,header=header)))
+        

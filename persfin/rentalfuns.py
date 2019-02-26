@@ -131,7 +131,7 @@ def rentalProperty(principal,interest_rate,bondyears,calcyears,rentpmonth,rentpe
                               "CalcYears",
                               "InitRent",  "RentIncrease",
                               "InitLevy",  "LevyIncrease",
-                              "InitR&T",  "R&TIncrease",
+                              "InitRandT",  "RandTIncrease",
                               "TaxRate","AgentPcnt",
                               "Maint","MaintPcnt",
                               "Risk","RiskPcnt",
